@@ -4,3 +4,5 @@ accelerate
 Pillow
 sentence-transformers
 psutil
+streamlit
+torchvision
