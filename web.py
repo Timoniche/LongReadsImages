@@ -9,6 +9,7 @@ import time
 import zipfile
 from pathlib import Path
 
+import numpy as np
 import streamlit as st
 
 # Ensure project root is importable
@@ -20,7 +21,39 @@ from web_extractor import fetch_and_extract, is_url
 from contextlib import redirect_stdout, redirect_stderr
 from urllib.parse import urlparse
 
+# Optional CLIP scoring
+try:
+    from sentence_transformers import SentenceTransformer
+    from PIL import Image
+    HAS_CLIP = True
+except ImportError:
+    HAS_CLIP = False
+
 st.set_page_config(page_title="Image Sequence Generation", layout="wide")
+
+
+@st.cache_resource
+def load_clip_models():
+    """Load CLIP image + text models once and cache across reruns."""
+    if not HAS_CLIP:
+        return None, None
+    img_model = SentenceTransformer("clip-ViT-B-32")
+    txt_model = SentenceTransformer("clip-ViT-B-32-multilingual-v1")
+    return img_model, txt_model
+
+
+def calculate_clip_score(image_path: str, text: str, img_model, txt_model) -> float:
+    """Cosine similarity between image and text via CLIP."""
+    if img_model is None or txt_model is None:
+        return 0.0
+    img = Image.open(image_path)
+    img_emb = img_model.encode(img)
+    txt_emb = txt_model.encode(text)
+    cos_sim = float(
+        np.dot(img_emb, txt_emb)
+        / (np.linalg.norm(img_emb) * np.linalg.norm(txt_emb) + 1e-10)
+    )
+    return round(cos_sim, 4)
 
 # ── session state ────────────────────────────────────────────────────
 
@@ -41,6 +74,13 @@ with st.sidebar:
     num_steps = st.slider("Inference steps", 20, 50, 30, help="More steps = better quality, slower")
     guidance_scale = st.slider("Guidance scale", 1.0, 15.0, 7.5, 0.5)
     seed = st.number_input("Seed", value=42, step=1, help="For reproducibility")
+    compute_clip = st.checkbox(
+        "Compute CLIP Score",
+        value=False,
+        disabled=not HAS_CLIP,
+        help="Measures image-text alignment. First run loads ~800MB of models." if HAS_CLIP
+             else "Install sentence-transformers and Pillow to enable",
+    )
 
     st.markdown("---")
     st.header("Model Info")
@@ -170,6 +210,24 @@ if run_button and input_data is not None:
         results["num_blocks"] = pipeline_results["num_blocks"]
         results["global_context"] = pipeline_results.get("global_context")
 
+        # CLIP scoring
+        if compute_clip and HAS_CLIP:
+            status_text.text("Computing CLIP scores (loading models on first run)...")
+            clip_img_model, clip_txt_model = load_clip_models()
+            clip_scores = []
+            for idx, block in enumerate(results["blocks"]):
+                img_path = block.get("image_path", "")
+                block_text = block.get("block_text", "")
+                if img_path and Path(img_path).exists() and block_text:
+                    score = calculate_clip_score(img_path, block_text, clip_img_model, clip_txt_model)
+                    block["clip_score"] = score
+                    clip_scores.append(score)
+                    status_text.text(f"CLIP scoring {idx + 1}/{len(results['blocks'])}...")
+                else:
+                    block["clip_score"] = None
+            results["clip_scores"] = clip_scores
+            results["clip_score_avg"] = round(float(np.mean(clip_scores)), 4) if clip_scores else 0.0
+
         progress_bar.progress(100)
         status_text.text("Done!")
         time.sleep(0.5)
@@ -224,11 +282,18 @@ if st.session_state.results is not None and not st.session_state.processing:
 
         # ── Statistics ───────────────────────────────────────────
         st.subheader("Statistics")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Images", results.get("num_blocks", len(blocks)))
-        col2.metric("Total time", f"{results['time_total']:.1f}s")
-        col3.metric("Per image", f"{results.get('time_per_image_avg', 0):.1f}s")
-        col4.metric("Input words", f"{results['input_words']:,}")
+
+        clip_avg = results.get("clip_score_avg")
+        has_clip_scores = clip_avg is not None
+
+        n_cols = 5 if has_clip_scores else 4
+        cols = st.columns(n_cols)
+        cols[0].metric("Images", results.get("num_blocks", len(blocks)))
+        cols[1].metric("Total time", f"{results['time_total']:.1f}s")
+        cols[2].metric("Per image", f"{results.get('time_per_image_avg', 0):.1f}s")
+        cols[3].metric("Input words", f"{results['input_words']:,}")
+        if has_clip_scores:
+            cols[4].metric("CLIP avg", f"{clip_avg:.4f}")
 
         st.markdown("**Time Breakdown:**")
         if results["time_parsing"] > 0:
@@ -236,6 +301,29 @@ if st.session_state.results is not None and not st.session_state.processing:
         st.write(f"- Segmentation + prompts: {results.get('time_segmentation', 0):.1f}s")
         st.write(f"- Image generation: {results.get('time_generation', 0):.1f}s")
         st.write(f"- **Total: {results['time_total']:.1f}s**")
+
+        # ── Per-block quality table ─────────────────────────────
+        if has_clip_scores:
+            import pandas as pd
+            st.markdown("**Per-block CLIP Scores:**")
+            table_rows = []
+            for i, block in enumerate(blocks):
+                score = block.get("clip_score")
+                text_preview = (block.get("block_text") or "")[:80]
+                if len(block.get("block_text") or "") > 80:
+                    text_preview += "..."
+                prompt_preview = (block.get("prompt") or "")[:80]
+                if len(block.get("prompt") or "") > 80:
+                    prompt_preview += "..."
+                table_rows.append({
+                    "Block": i + 1,
+                    "CLIP Score": f"{score:.4f}" if score is not None else "N/A",
+                    "Gen time (s)": f"{block.get('generation_time', 0):.1f}",
+                    "Text": text_preview,
+                    "Prompt": prompt_preview,
+                })
+            df = pd.DataFrame(table_rows)
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
         # ZIP download
         zip_buffer = io.BytesIO()
