@@ -17,9 +17,7 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from web_extractor import fetch_and_extract, is_url
 from contextlib import redirect_stdout, redirect_stderr
-from urllib.parse import urlparse
 
 # Optional CLIP scoring
 try:
@@ -63,7 +61,7 @@ if "results" not in st.session_state:
     st.session_state.results = None
 
 st.title("Image Sequence Generation from Long-reads")
-st.markdown("Upload a Russian text file or enter a URL to generate a set of images.")
+st.markdown("Upload a Russian text file to generate a set of images.")
 
 # ── sidebar ──────────────────────────────────────────────────────────
 
@@ -93,32 +91,16 @@ with st.sidebar:
 # ── input ────────────────────────────────────────────────────────────
 
 st.header("Input")
-input_method = st.radio("Choose input method:", ["URL", "Text File"], horizontal=True)
 
 input_data = None
 input_type = None
 filename = None
 
-if input_method == "URL":
-    url_input = st.text_input("Enter URL:", placeholder="https://dzen.ru/a/...")
-    if url_input:
-        if is_url(url_input):
-            input_data = url_input
-            input_type = "url"
-            parsed = urlparse(url_input)
-            domain = parsed.netloc.replace("www.", "").split(".")[0]
-            path_parts = [p for p in parsed.path.split("/") if p]
-            name = path_parts[-1][:50] if path_parts else "index"
-            name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
-            filename = f"web_{domain}_{name}" if name else f"web_{domain}"
-        else:
-            st.error("Please enter a valid URL (must start with http:// or https://)")
-else:
-    uploaded_file = st.file_uploader("Upload a text file", type=["txt"])
-    if uploaded_file is not None:
-        input_data = uploaded_file.read().decode("utf-8")
-        input_type = "file"
-        filename = Path(uploaded_file.name).stem
+uploaded_file = st.file_uploader("Upload a text file", type=["txt"])
+if uploaded_file is not None:
+    input_data = uploaded_file.read().decode("utf-8")
+    input_type = "file"
+    filename = Path(uploaded_file.name).stem
 
 # ── run button ───────────────────────────────────────────────────────
 
@@ -165,12 +147,8 @@ if run_button and input_data is not None:
         progress_bar.progress(5)
 
         start_parse = time.time()
-        if input_type == "url":
-            with redirect_stdout(log_capture), redirect_stderr(log_capture):
-                raw = fetch_and_extract(input_data, save_to=None)
-        else:
-            raw = input_data
-            log_capture.write(f"Reading from uploaded file\n")
+        raw = input_data
+        log_capture.write(f"Reading from uploaded file\n")
 
         results["time_parsing"] = time.time() - start_parse
         results["input_chars"] = len(raw)

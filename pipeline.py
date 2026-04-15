@@ -15,12 +15,6 @@ from pathlib import Path
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Ensure project root is importable (for web_extractor)
-_project_root = str(Path(__file__).resolve().parent.parent)
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
-
-from web_extractor import fetch_and_extract, is_url
 from image_generator import generate_image, cleanup_sd
 
 # ── device ────────────────────────────────────────────────────────────
@@ -512,13 +506,6 @@ if __name__ == "__main__":
         path = f"data/longreads/{filename}.txt"
         raw = Path(path).read_text(encoding="utf-8")
         print(f"Reading from file: {path}")
-    elif is_url(input_arg):
-        from urllib.parse import urlparse
-        parsed = urlparse(input_arg)
-        domain = parsed.netloc.replace("www.", "").split(".")[0]
-        filename = f"web_{domain}"
-        save_path = Path(f"data/longreads/{filename}.txt")
-        raw = fetch_and_extract(input_arg, save_to=save_path)
     else:
         path = input_arg
         filename = Path(path).stem

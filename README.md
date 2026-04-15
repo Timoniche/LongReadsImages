@@ -9,17 +9,10 @@
 
 ## Установка
 
-### 1. Установить основные зависимости (из корня проекта)
-
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Установить зависимости пакета ddulaev
-
-```bash
-pip install -r requirements.txt
-```
 
 ## Модели (скачиваются автоматически)
 
@@ -29,6 +22,6 @@ pip install -r requirements.txt
 |--------|--------|-----------|
 | `Qwen/Qwen2.5-1.5B-Instruct` | ~3 GB | Сегментация текста + генерация промптов |
 | `stable-diffusion-v1-5/stable-diffusion-v1-5` | ~5 GB | Генерация изображений |
-| `clip-ViT-B-32-multilingual-v1` | ~600 MB | CLIP Score (только для бенчмарка) |
+| `clip-ViT-B-32-multilingual-v1` | ~600 MB | CLIP Score (для бенчмарка) |
 
 Первый запуск может занять 10-15 минут на скачивание. Последующие запуски используют кэш.
