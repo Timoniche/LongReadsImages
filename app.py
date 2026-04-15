@@ -61,7 +61,7 @@ if "results" not in st.session_state:
     st.session_state.results = None
 
 st.title("Генерация последовательности изображений по лонг-ридам")
-st.markdown("Upload a Russian text file to generate a set of images.")
+st.markdown("Загрузите статью на русском в формате txt для генерации изображений")
 
 # ── sidebar ──────────────────────────────────────────────────────────
 
@@ -90,13 +90,13 @@ with st.sidebar:
 
 # ── input ────────────────────────────────────────────────────────────
 
-st.header("Input")
+st.header("Входные данные")
 
 input_data = None
 input_type = None
 filename = None
 
-uploaded_file = st.file_uploader("Upload a text file", type=["txt"])
+uploaded_file = st.file_uploader("Загрузите текстовый файл", type=["txt"])
 if uploaded_file is not None:
     input_data = uploaded_file.read().decode("utf-8")
     input_type = "file"
@@ -105,7 +105,7 @@ if uploaded_file is not None:
 # ── run button ───────────────────────────────────────────────────────
 
 run_button = st.button(
-    "Generate Images",
+    "Сгенерировать изображения",
     type="primary",
     disabled=(input_data is None or st.session_state.processing),
 )
