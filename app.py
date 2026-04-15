@@ -60,7 +60,7 @@ if "processing" not in st.session_state:
 if "results" not in st.session_state:
     st.session_state.results = None
 
-st.title("Image Sequence Generation from Long-reads")
+st.title("Генерация последовательности изображений по лонг-ридам")
 st.markdown("Upload a Russian text file to generate a set of images.")
 
 # ── sidebar ──────────────────────────────────────────────────────────
