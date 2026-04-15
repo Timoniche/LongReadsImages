@@ -63,30 +63,10 @@ if "results" not in st.session_state:
 st.title("Генерация последовательности изображений по лонг-ридам")
 st.markdown("Загрузите статью на русском в формате txt для генерации изображений")
 
-# ── sidebar ──────────────────────────────────────────────────────────
-
-with st.sidebar:
-    st.header("Settings")
-
-    num_blocks = st.slider("Number of blocks", 3, 15, 7, help="How many images to generate")
-    num_steps = st.slider("Inference steps", 20, 50, 30, help="More steps = better quality, slower")
-    guidance_scale = st.slider("Guidance scale", 1.0, 15.0, 7.5, 0.5)
-    seed = st.number_input("Seed", value=42, step=1, help="For reproducibility")
-    compute_clip = st.checkbox(
-        "Compute CLIP Score",
-        value=False,
-        disabled=not HAS_CLIP,
-        help="Measures image-text alignment. First run loads ~800MB of models." if HAS_CLIP
-             else "Install sentence-transformers and Pillow to enable",
-    )
-
-    st.markdown("---")
-    st.header("Model Info")
-    st.markdown("""
-    **Segmentation:** Qwen 2.5 1.5B
-    **Image gen:** Stable Diffusion 1.5
-    **Language:** Russian input, English prompts
-    """)
+# ── defaults for removed sliders ────────────────────────────────────
+num_blocks = 7
+num_steps = 30
+guidance_scale = 7.5
 
 # ── input ────────────────────────────────────────────────────────────
 
@@ -101,6 +81,20 @@ if uploaded_file is not None:
     input_data = uploaded_file.read().decode("utf-8")
     input_type = "file"
     filename = Path(uploaded_file.name).stem
+
+# ── settings on main page ────────────────────────────────────────────
+
+col1, col2 = st.columns(2)
+with col1:
+    seed = st.number_input("Seed", value=42, step=1, help="For reproducibility")
+with col2:
+    compute_clip = st.checkbox(
+        "Compute CLIP Score",
+        value=False,
+        disabled=not HAS_CLIP,
+        help="Measures image-text alignment. First run loads ~800MB of models." if HAS_CLIP
+             else "Install sentence-transformers and Pillow to enable",
+    )
 
 # ── run button ───────────────────────────────────────────────────────
 
