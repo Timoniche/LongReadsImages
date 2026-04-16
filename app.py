@@ -223,7 +223,7 @@ if st.session_state.results is not None and not st.session_state.processing:
         st.warning("No images were generated.")
     else:
         # ── Article view: text with inline images ────────────────
-        st.subheader("Illustrated Article")
+        st.subheader("Статья с иллюстрациями")
 
         for i, block in enumerate(blocks):
             # Text of this block
