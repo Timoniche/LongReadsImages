@@ -82,19 +82,10 @@ if uploaded_file is not None:
     input_type = "file"
     filename = Path(uploaded_file.name).stem
 
-# ── settings on main page ────────────────────────────────────────────
+# ── settings (fixed defaults, not shown in UI) ───────────────────────
 
-col1, col2 = st.columns(2)
-with col1:
-    seed = st.number_input("Seed", value=42, step=1, help="For reproducibility")
-with col2:
-    compute_clip = st.checkbox(
-        "Compute CLIP Score",
-        value=False,
-        disabled=not HAS_CLIP,
-        help="Measures image-text alignment. First run loads ~800MB of models." if HAS_CLIP
-             else "Install sentence-transformers and Pillow to enable",
-    )
+seed = 42
+compute_clip = HAS_CLIP
 
 # ── run button ───────────────────────────────────────────────────────
 
@@ -114,7 +105,7 @@ if run_button and input_data is not None:
     progress_container = st.container()
 
     with progress_container:
-        st.info("Processing... First run may take a few minutes to download models.")
+        st.info("Выполняю... Первый запуск может занять несколько минут для загрузки моделей.")
         progress_bar = st.progress(0)
         status_text = st.empty()
 
@@ -137,7 +128,7 @@ if run_button and input_data is not None:
         from pipeline import run_pipeline
 
         # Step 1: Extract text
-        status_text.text("Step 1/2: Extracting text...")
+        status_text.text("Шаг 1/2: Извлекаю текст...")
         progress_bar.progress(5)
 
         start_parse = time.time()
@@ -152,7 +143,7 @@ if run_button and input_data is not None:
         )
 
         # Step 2: Segmentation + Generation
-        status_text.text("Step 2/2: Segmenting text and generating prompts...")
+        status_text.text("Шаг 2/2: Сегментирую текст и составляю промпты...")
         progress_bar.progress(10)
 
         output_dir = Path("data/images") / results["filename"]
@@ -161,7 +152,7 @@ if run_button and input_data is not None:
             # segmentation is ~10%, generation fills 10%-95%
             pct = 10 + int(85 * current / total)
             progress_bar.progress(min(pct, 95))
-            status_text.text(f"Generating image {current}/{total}...")
+            status_text.text(f"Генерирую изображение {current}/{total}...")
 
         with redirect_stdout(log_capture), redirect_stderr(log_capture):
             pipeline_results = run_pipeline(
@@ -184,7 +175,7 @@ if run_button and input_data is not None:
 
         # CLIP scoring
         if compute_clip and HAS_CLIP:
-            status_text.text("Computing CLIP scores (loading models on first run)...")
+            status_text.text("Вычисляю CLIP метрику (гружу модели для первого запуска)...")
             clip_img_model, clip_txt_model = load_clip_models()
             clip_scores = []
             for idx, block in enumerate(results["blocks"]):
@@ -224,7 +215,7 @@ if run_button and input_data is not None:
 if st.session_state.results is not None and not st.session_state.processing:
     results = st.session_state.results
 
-    st.header("Results")
+    st.header("Результат генерации")
 
     blocks = results.get("blocks", [])
 
