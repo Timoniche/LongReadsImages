@@ -166,7 +166,9 @@ if run_button and input_data is not None:
             )
 
         results["blocks"] = pipeline_results["blocks"]
+        results["time_context"] = pipeline_results["time_context"]
         results["time_segmentation"] = pipeline_results["time_segmentation"]
+        results["time_segmentation_per_block"] = pipeline_results["time_segmentation_per_block"]
         results["time_generation"] = pipeline_results["time_generation"]
         results["time_total"] = time.time() - total_start
         results["time_per_image_avg"] = pipeline_results["time_per_image_avg"]
@@ -244,24 +246,26 @@ if st.session_state.results is not None and not st.session_state.processing:
             st.markdown("---")
 
         # ── Statistics ───────────────────────────────────────────
-        st.subheader("Statistics")
+        st.subheader("Статистика")
 
         clip_avg = results.get("clip_score_avg")
         has_clip_scores = clip_avg is not None
 
-        n_cols = 5 if has_clip_scores else 4
+        n_cols = 6 if has_clip_scores else 5
         cols = st.columns(n_cols)
-        cols[0].metric("Images", results.get("num_blocks", len(blocks)))
-        cols[1].metric("Total time", f"{results['time_total']:.1f}s")
-        cols[2].metric("Per image", f"{results.get('time_per_image_avg', 0):.1f}s")
-        cols[3].metric("Input words", f"{results['input_words']:,}")
+        cols[0].metric("Количество изображений", results.get("num_blocks", len(blocks)))
+        cols[1].metric("Суммарное время", f"{results['time_total']:.1f}s")
+        cols[2].metric("Генерация одной картинки", f"{results.get('time_per_image_avg', 0):.1f}s")
+        cols[3].metric("Сегментация блока", f"{results.get('time_segmentation_per_block', 0):.1f}s")
+        cols[4].metric("Количество слов", f"{results['input_words']:,}")
         if has_clip_scores:
-            cols[4].metric("CLIP avg", f"{clip_avg:.4f}")
+            cols[5].metric("CLIP avg", f"{clip_avg:.4f}")
 
         st.markdown("**Time Breakdown:**")
         if results["time_parsing"] > 0:
             st.write(f"- Parsing: {results['time_parsing']:.2f}s")
-        st.write(f"- Segmentation + prompts: {results.get('time_segmentation', 0):.1f}s")
+        st.write(f"- Entities extraction (pass 1): {results.get('time_context', 0):.1f}s")
+        st.write(f"- Segmentation + prompts (pass 2): {results.get('time_segmentation', 0):.1f}s  ({results.get('time_segmentation_per_block', 0):.1f}s/block avg)")
         st.write(f"- Image generation: {results.get('time_generation', 0):.1f}s")
         st.write(f"- **Total: {results['time_total']:.1f}s**")
 

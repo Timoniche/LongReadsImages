@@ -433,7 +433,7 @@ def run_pipeline(
     # Step 1b: segmentation + prompt generation (with context anchors)
     t0 = time.time()
     blocks = segment_and_prompt(text, num_blocks=num_blocks, global_context=global_context)
-    time_segmentation = time.time() - t0 + time_context
+    time_segmentation = time.time() - t0
 
     # Step 2: image generation
     t0 = time.time()
@@ -449,14 +449,17 @@ def run_pipeline(
 
     time_total = time.time() - t_total_start
 
+    n = len(blocks)
     return {
         "input_chars": len(text),
         "input_words": len(text.split()),
-        "num_blocks": len(blocks),
+        "num_blocks": n,
+        "time_context": round(time_context, 2),
         "time_segmentation": round(time_segmentation, 2),
+        "time_segmentation_per_block": round(time_segmentation / max(n, 1), 2),
         "time_generation": round(time_generation, 2),
         "time_total": round(time_total, 2),
-        "time_per_image_avg": round(time_generation / max(len(blocks), 1), 2),
+        "time_per_image_avg": round(time_generation / max(n, 1), 2),
         "blocks": blocks,
         "output_dir": str(output_dir),
         "global_context": global_context,
